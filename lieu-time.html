@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lieu Time</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#222; --border:#2e2e2e;
+  --green:#c8f060; --green-dim:#8aaa3a; --green-bg:rgba(200,240,96,0.08); --green-border:#4a6620;
+  --red:#ff5c5c; --red-bg:rgba(255,92,92,0.08); --red-border:#6b2020;
+  --blue:#60c8f0; --blue-bg:rgba(96,200,240,0.08); --blue-border:#204a6b;
+  --purple:#b060f0; --purple-bg:rgba(176,96,240,0.08); --purple-border:#4a206b;
+  --text:#e8e8e8; --muted:#888; --dim:#555;
+  --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+
+/* NAME SCREEN */
+.name-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:999;align-items:center;justify-content:center;padding:32px}
+.name-screen.visible{display:flex}
+.name-card{background:var(--surface);border:1px solid var(--border);padding:36px 32px;max-width:380px;width:100%}
+.nc-label{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.name-card h2{font-family:var(--mono);font-size:20px;font-weight:600;margin-bottom:6px}
+.name-card p{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5}
+.name-card input{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--sans);font-size:16px;padding:12px 14px;outline:none;width:100%;margin-bottom:16px;transition:border-color .15s}
+.name-card input:focus{border-color:var(--green)}
+.name-card button{width:100%;background:var(--green);color:#0f0f0f;border:none;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:13px;cursor:pointer;transition:background .15s}
+.name-card button:hover{background:#d9ff66}
+
+/* HEADER */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:20px 24px 18px;position:sticky;top:0;z-index:100}
+.header-user{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.header-user span{color:var(--muted)}
+.btn-rename{background:none;border:1px solid var(--border);color:var(--dim);font-family:var(--mono);font-size:9px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;transition:color .15s,border-color .15s}
+.btn-rename:hover{color:var(--muted);border-color:var(--dim)}
+.header-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.header-balances{display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap}
+.bal-label{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.bal-value{font-family:var(--mono);font-size:36px;font-weight:600;color:var(--green);line-height:1;letter-spacing:-.02em}
+.bal-value.neg{color:var(--red)}
+.bal-value.pending{font-size:22px;color:var(--blue)}
+.bal-value.pending.neg-p{color:var(--purple)}
+.bal-meta{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
+.meta-item{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.meta-item span{color:var(--text)}
+.header-actions{display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0}
+.btn-add{background:var(--green);color:#0f0f0f;border:none;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:10px 16px;cursor:pointer;white-space:nowrap;transition:background .15s,transform .1s}
+.btn-add:hover{background:#d9ff66;transform:translateY(-1px)}
+.btn-export{background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s}
+.btn-export:hover{border-color:var(--muted);color:var(--text)}
+
+/* MAIN */
+.main{padding:24px;max-width:780px;margin:0 auto}
+
+/* FORM */
+.form-panel{background:var(--surface);border:1px solid var(--border);padding:24px;margin-bottom:28px;display:none}
+.form-panel.open{display:block;animation:slideDown .2s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.form-title{font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:20px}
+.type-toggle{display:flex;gap:1px;margin-bottom:20px;background:var(--bg);padding:1px}
+.type-btn{flex:1;background:none;border:none;padding:10px;font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all .15s}
+.type-btn.ae{background:var(--green);color:#0f0f0f}
+.type-btn.as{background:var(--red);color:#fff}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group.full{grid-column:1/-1}
+label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+input[type=text],input[type=date],input[type=number],textarea,select{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--sans);font-size:14px;padding:10px 12px;outline:none;transition:border-color .15s;width:100%}
+input:focus,textarea:focus,select:focus{border-color:var(--green)}
+textarea{resize:vertical;min-height:70px}
+.time-row{display:flex;gap:8px;align-items:center}
+.time-row input{width:70px;text-align:center;font-family:var(--mono);font-size:18px;font-weight:500}
+.time-sep{font-family:var(--mono);font-size:18px;color:var(--muted)}
+.time-subs{display:flex;gap:8px;margin-top:4px}
+.time-sub{width:70px;text-align:center;font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+
+.spec-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);cursor:pointer;user-select:none;transition:border-color .15s}
+.spec-row:hover{border-color:var(--blue)}
+.spec-row.on{border-color:var(--blue);background:var(--blue-bg)}
+.spec-box{width:16px;height:16px;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--blue);flex-shrink:0;transition:all .15s}
+.spec-row.on .spec-box{border-color:var(--blue);background:rgba(96,200,240,.2)}
+.spec-lbl{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.05em}
+.spec-row.on .spec-lbl{color:var(--blue)}
+
+.form-actions{display:flex;gap:10px;margin-top:20px}
+.btn-submit{flex:1;border:none;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:12px;cursor:pointer;transition:filter .15s;background:var(--green);color:#0f0f0f}
+.btn-submit:hover{filter:brightness(1.12)}
+.btn-submit.s-spent{background:var(--red);color:#fff}
+.btn-submit.s-spec-e{background:var(--blue);color:#0f0f0f}
+.btn-submit.s-spec-s{background:var(--purple);color:#fff}
+.btn-cancel{background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:12px 20px;cursor:pointer;transition:border-color .15s,color .15s}
+.btn-cancel:hover{border-color:var(--muted);color:var(--text)}
+
+/* LEDGER */
+.ledger-ctrl{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap}
+.ledger-title{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.ledger-right{display:flex;align-items:center;gap:10px}
+.ledger-count{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.sort-sel{background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:.06em;padding:5px 10px;cursor:pointer;outline:none;appearance:none;width:auto}
+
+.ledger-empty{background:var(--surface);border:1px dashed var(--border);padding:40px 24px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.05em}
+.ledger-list{display:flex;flex-direction:column;gap:2px}
+
+.entry{background:var(--surface);border-left:3px solid transparent;padding:14px 16px;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:start;transition:background .1s}
+.entry:hover{background:var(--surface2)}
+.entry.earned{border-left-color:var(--green)}
+.entry.spent{border-left-color:var(--red)}
+.entry.spec-earned{border-left-color:var(--blue)}
+.entry.spec-spent{border-left-color:var(--purple)}
+
+.e-icon{font-family:var(--mono);font-size:15px;line-height:1;margin-top:2px}
+.entry.earned .e-icon{color:var(--green)}
+.entry.spent .e-icon{color:var(--red)}
+.entry.spec-earned .e-icon{color:var(--blue)}
+.entry.spec-spent .e-icon{color:var(--purple)}
+
+.e-name{font-size:14px;font-weight:500;margin-bottom:2px}
+.e-desc{font-size:12px;color:var(--muted);margin-bottom:5px;line-height:1.4}
+.e-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:3px}
+.e-date{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.05em}
+.badge{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border:1px solid}
+.b-spec-e{color:var(--blue);border-color:var(--blue-border);background:var(--blue-bg)}
+.b-spec-s{color:var(--purple);border-color:var(--purple-border);background:var(--purple-bg)}
+.b-edited{color:var(--dim);border-color:var(--border);font-size:8px}
+
+.e-amount{font-family:var(--mono);font-size:14px;font-weight:600;white-space:nowrap;text-align:right;padding-top:2px}
+.entry.earned .e-amount{color:var(--green)}
+.entry.spent .e-amount{color:var(--red)}
+.entry.spec-earned .e-amount{color:var(--blue)}
+.entry.spec-spent .e-amount{color:var(--purple)}
+
+.e-actions{display:flex;flex-direction:column;gap:4px;opacity:0;transition:opacity .15s}
+.entry:hover .e-actions{opacity:1}
+.e-btn{background:none;border:1px solid var(--border);color:var(--dim);font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.e-btn:hover{color:var(--text);border-color:var(--muted)}
+.e-btn.cb{color:var(--green);border-color:var(--green-border)}
+.e-btn.cb:hover{background:var(--green-bg)}
+.e-btn.db:hover{color:var(--red);border-color:var(--red-border)}
+
+/* ACTION BAR */
+.action-bar{display:none;background:var(--surface2);border:1px solid var(--border);padding:12px 16px;margin-bottom:10px;font-family:var(--mono);font-size:11px;color:var(--text);align-items:center;justify-content:space-between;gap:12px}
+.action-bar.visible{display:flex;animation:slideDown .15s ease}
+.action-bar.del-mode{border-color:var(--red-border)}
+.ab-btn{font-family:var(--mono);font-size:11px;background:none;border:1px solid;padding:4px 10px;cursor:pointer;letter-spacing:.05em;transition:background .15s}
+.ab-del{border-color:var(--red-border);color:var(--red)}
+.ab-del:hover{background:var(--red-bg)}
+.ab-cancel{border-color:var(--border);color:var(--muted)}
+.ab-cancel:hover{background:var(--border)}
+.ab-btns{display:flex;gap:8px}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;padding:24px}
+.modal-overlay.visible{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;animation:slideDown .2s ease}
+.modal-title{font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:20px}
+
+@media(max-width:520px){
+  .form-grid{grid-template-columns:1fr}
+  .bal-value{font-size:26px}
+  .bal-value.pending{font-size:18px}
+  .header-balances{gap:16px}
+  .entry{grid-template-columns:auto 1fr auto}
+  .e-actions{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- NAME SCREEN -->
+<div class="name-screen" id="name-screen">
+  <div class="name-card">
+    <div class="nc-label">Lieu Time Tracker</div>
+    <h2>Who are you?</h2>
+    <p>Enter your name so your ledger is personalized. Stored locally on your device only.</p>
+    <input type="text" id="name-input" placeholder="Your name" maxlength="60" />
+    <button onclick="saveName()">Get Started</button>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-title">Edit Entry</div>
+    <div class="type-toggle">
+      <button class="type-btn ae" id="edt-earned" onclick="editSetType('earned')">▲ Earned</button>
+      <button class="type-btn"    id="edt-spent"  onclick="editSetType('spent')">▼ Spent</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Name / Reason</label><input type="text" id="e-name" /></div>
+      <div class="form-group"><label>Date</label><input type="date" id="e-date" /></div>
+      <div class="form-group">
+        <label>Duration</label>
+        <div class="time-row">
+          <input type="number" id="e-hours" min="0" max="999" placeholder="0" />
+          <span class="time-sep">h</span>
+          <input type="number" id="e-mins" min="0" max="59" placeholder="00" />
+          <span class="time-sep">m</span>
+        </div>
+        <div class="time-subs"><div class="time-sub">Hours</div><div style="width:8px"></div><div class="time-sub">Min</div></div>
+      </div>
+      <div class="form-group full"><label>Description <span style="color:var(--dim);font-size:9px">(optional)</span></label><textarea id="e-desc"></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-submit" id="e-submit" onclick="saveEdit()">Save Changes</button>
+      <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-user">
+    <span id="uname"></span>
+    <button class="btn-rename" onclick="showNameScreen()">Change</button>
+  </div>
+  <div class="header-top">
+    <div class="header-balances">
+      <div>
+        <div class="bal-label">Confirmed Balance</div>
+        <div class="bal-value" id="bal">0h 00m</div>
+        <div class="bal-meta">
+          <div class="meta-item">Earned: <span id="m-earned">0h 00m</span></div>
+          <div class="meta-item">Spent: <span id="m-spent">0h 00m</span></div>
+        </div>
+      </div>
+      <div id="pend-block" style="opacity:.4">
+        <div class="bal-label" style="color:var(--blue-border)">Pending</div>
+        <div class="bal-value pending" id="pend">+0h 00m</div>
+        <div class="bal-meta"><div class="meta-item" style="color:var(--dim)">Speculative entries</div></div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-add" onclick="toggleForm()">+ New Entry</button>
+      <button class="btn-export" onclick="exportCSV()">↓ Export CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- FORM -->
+  <div class="form-panel" id="form-panel">
+    <div class="form-title">New Entry</div>
+    <div class="type-toggle">
+      <button class="type-btn ae" id="btn-earned" onclick="setType('earned')">▲ Earned</button>
+      <button class="type-btn"    id="btn-spent"  onclick="setType('spent')">▼ Spent</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Name / Reason</label><input type="text" id="f-name" placeholder="e.g. Overtime shift" /></div>
+      <div class="form-group"><label>Date</label><input type="date" id="f-date" /></div>
+      <div class="form-group">
+        <label>Duration</label>
+        <div class="time-row">
+          <input type="number" id="f-hours" min="0" max="999" placeholder="0" />
+          <span class="time-sep">h</span>
+          <input type="number" id="f-mins" min="0" max="59" placeholder="00" />
+          <span class="time-sep">m</span>
+        </div>
+        <div class="time-subs"><div class="time-sub">Hours</div><div style="width:8px"></div><div class="time-sub">Min</div></div>
+      </div>
+      <div class="form-group full"><label>Description <span style="color:var(--dim);font-size:9px">(optional)</span></label><textarea id="f-desc" placeholder="Any notes..."></textarea></div>
+      <div class="form-group full">
+        <div class="spec-row" id="spec-row" onclick="toggleSpec()">
+          <div class="spec-box" id="spec-box"></div>
+          <div class="spec-lbl">Mark as speculative / pending confirmation</div>
+        </div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-submit" id="f-submit" onclick="submitEntry()">Log Earned Time</button>
+      <button class="btn-cancel" onclick="closeForm()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ACTION BAR -->
+  <div class="action-bar" id="action-bar">
+    <span id="action-msg"></span>
+    <div class="ab-btns">
+      <button class="ab-btn ab-del" onclick="confirmDelete()">Delete</button>
+      <button class="ab-btn ab-cancel" onclick="cancelAction()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- LEDGER -->
+  <div class="ledger-ctrl">
+    <div class="ledger-title">Ledger</div>
+    <div class="ledger-right">
+      <div class="ledger-count" id="lcount"></div>
+      <select class="sort-sel" id="sort-sel" onchange="render()">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="earned">Earned first</option>
+        <option value="spent">Spent first</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="ledger-empty" id="ledger-empty">No entries yet — log your first time block above.</div>
+  <div class="ledger-list" id="ledger-list"></div>
+
+</div>
+
+<script>
+const SKEY = 'lieu_v3', NKEY = 'lieu_name';
+let entries = [], audit = [], curType = 'earned', isSpec = false, pendingDel = null, editId = null, editType = 'earned';
+
+function init() {
+  const s = localStorage.getItem(SKEY);
+  if (s) { try { const d=JSON.parse(s); entries=d.entries||[]; audit=d.audit||[]; } catch(e){} }
+  const n = localStorage.getItem(NKEY);
+  if (!n) showNameScreen(); else document.getElementById('uname').textContent = n;
+  document.getElementById('f-date').value = today();
+  render();
+}
+
+function today() { return new Date().toISOString().split('T')[0]; }
+function save() { localStorage.setItem(SKEY, JSON.stringify({entries, audit})); }
+
+function ft(m) { const a=Math.abs(m), h=Math.floor(a/60), mn=a%60; return `${h}h ${String(mn).padStart(2,'0')}m`; }
+function fd(s) { if(!s) return '—'; const [y,mo,d]=s.split('-'), ms=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return `${ms[+mo-1]} ${+d}, ${y}`; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function shake(id) { const el=document.getElementById(id); if(!el) return; el.style.borderColor='var(--red)'; setTimeout(()=>el.style.borderColor='',900); }
+
+// NAME
+function showNameScreen() { document.getElementById('name-screen').classList.add('visible'); setTimeout(()=>document.getElementById('name-input').focus(),100); }
+function saveName() {
+  const v = document.getElementById('name-input').value.trim();
+  if (!v) { shake('name-input'); return; }
+  localStorage.setItem(NKEY, v);
+  document.getElementById('uname').textContent = v;
+  document.getElementById('name-screen').classList.remove('visible');
+  document.getElementById('name-input').value = '';
+}
+document.getElementById('name-input').addEventListener('keydown', e => { if(e.key==='Enter') saveName(); });
+
+// FORM
+function toggleForm() { const p=document.getElementById('form-panel'); p.classList.contains('open') ? closeForm() : openForm(); }
+function openForm() { document.getElementById('form-panel').classList.add('open'); document.getElementById('f-date').value=today(); document.getElementById('f-name').focus(); }
+function closeForm() {
+  document.getElementById('form-panel').classList.remove('open');
+  ['f-name','f-hours','f-mins','f-desc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-date').value = today();
+  isSpec = false; updateSpecUI(); setType('earned');
+}
+
+function setType(t) {
+  curType = t;
+  document.getElementById('btn-earned').className = 'type-btn' + (t==='earned'?' ae':'');
+  document.getElementById('btn-spent').className  = 'type-btn' + (t==='spent'?' as':'');
+  updateSubmitBtn();
+}
+function toggleSpec() { isSpec=!isSpec; updateSpecUI(); updateSubmitBtn(); }
+function updateSpecUI() {
+  document.getElementById('spec-row').classList.toggle('on', isSpec);
+  document.getElementById('spec-box').textContent = isSpec ? '✓' : '';
+}
+function updateSubmitBtn() {
+  const b = document.getElementById('f-submit');
+  if (!isSpec) { b.textContent = curType==='earned'?'Log Earned Time':'Log Spent Time'; b.className='btn-submit'+(curType==='spent'?' s-spent':''); }
+  else { b.textContent = curType==='earned'?'Log Speculative Earned':'Log Speculative Spent'; b.className='btn-submit '+(curType==='earned'?'s-spec-e':'s-spec-s'); }
+}
+
+function submitEntry() {
+  const name=document.getElementById('f-name').value.trim(), date=document.getElementById('f-date').value;
+  const min=parseInt(document.getElementById('f-hours').value||0)*60+parseInt(document.getElementById('f-mins').value||0);
+  const desc=document.getElementById('f-desc').value.trim();
+  if (!name){shake('f-name');return;} if (!date){shake('f-date');return;} if (min<=0){shake('f-hours');return;}
+  entries.unshift({id:Date.now().toString(),type:curType,speculative:isSpec,name,date,minutes:min,desc,createdAt:new Date().toISOString(),editedAt:null,deleted:false,deletedAt:null});
+  save(); closeForm(); render();
+}
+
+// CONFIRM SPECULATIVE
+function confirmEntry(id) {
+  const e=entries.find(x=>x.id===id); if(!e) return;
+  audit.push({...e,_atype:'pre-confirm',_aat:new Date().toISOString()});
+  e.speculative=false; e.editedAt=new Date().toISOString();
+  save(); render();
+}
+
+// EDIT
+function openEdit(id) {
+  const e=entries.find(x=>x.id===id); if(!e) return;
+  editId=id; editType=e.type;
+  document.getElementById('e-name').value=e.name;
+  document.getElementById('e-date').value=e.date;
+  document.getElementById('e-hours').value=Math.floor(e.minutes/60);
+  document.getElementById('e-mins').value=e.minutes%60;
+  document.getElementById('e-desc').value=e.desc||'';
+  editSetType(e.type);
+  document.getElementById('edit-modal').classList.add('visible');
+  setTimeout(()=>document.getElementById('e-name').focus(),100);
+}
+function editSetType(t) {
+  editType=t;
+  document.getElementById('edt-earned').className='type-btn'+(t==='earned'?' ae':'');
+  document.getElementById('edt-spent').className='type-btn'+(t==='spent'?' as':'');
+  document.getElementById('e-submit').className='btn-submit'+(t==='spent'?' s-spent':'');
+}
+function closeEdit() { document.getElementById('edit-modal').classList.remove('visible'); editId=null; }
+function saveEdit() {
+  const name=document.getElementById('e-name').value.trim(), date=document.getElementById('e-date').value;
+  const min=parseInt(document.getElementById('e-hours').value||0)*60+parseInt(document.getElementById('e-mins').value||0);
+  const desc=document.getElementById('e-desc').value.trim();
+  if (!name){shake('e-name');return;} if (!date){shake('e-date');return;} if (min<=0){shake('e-hours');return;}
+  const e=entries.find(x=>x.id===editId); if(!e) return;
+  audit.push({...e,_atype:'pre-edit',_aat:new Date().toISOString()});
+  e.name=name; e.date=date; e.minutes=min; e.desc=desc; e.type=editType; e.editedAt=new Date().toISOString();
+  save(); closeEdit(); render();
+}
+
+// DELETE (soft)
+function requestDelete(id) {
+  pendingDel=id;
+  const e=entries.find(x=>x.id===id);
+  document.getElementById('action-msg').textContent=`Delete "${e.name}" (${ft(e.minutes)})? It will still appear in CSV exports.`;
+  const b=document.getElementById('action-bar'); b.classList.add('visible','del-mode');
+  b.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function confirmDelete() {
+  const e=entries.find(x=>x.id===pendingDel); if(e) { audit.push({...e,_atype:'deleted',_aat:new Date().toISOString()}); e.deleted=true; e.deletedAt=new Date().toISOString(); }
+  pendingDel=null; save(); cancelAction(); render();
+}
+function cancelAction() { pendingDel=null; const b=document.getElementById('action-bar'); b.classList.remove('visible','del-mode'); }
+
+// SORT
+function getSorted() {
+  const v=document.getElementById('sort-sel').value, vis=entries.filter(e=>!e.deleted), s=[...vis];
+  if (v==='newest') s.sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+  else if (v==='oldest') s.sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+  else if (v==='earned') s.sort((a,b)=>{ if(a.type===b.type) return b.date.localeCompare(a.date); return a.type==='earned'?-1:1; });
+  else if (v==='spent')  s.sort((a,b)=>{ if(a.type===b.type) return b.date.localeCompare(a.date); return a.type==='spent'?-1:1; });
+  return s;
+}
+
+// RENDER
+function render() {
+  const conf=entries.filter(e=>!e.deleted&&!e.speculative);
+  const spec=entries.filter(e=>!e.deleted&&e.speculative);
+  let earned=0,spent=0,pnet=0;
+  conf.forEach(e=>{ if(e.type==='earned') earned+=e.minutes; else spent+=e.minutes; });
+  spec.forEach(e=>{ if(e.type==='earned') pnet+=e.minutes; else pnet-=e.minutes; });
+  const bal=earned-spent;
+
+  const bel=document.getElementById('bal'); bel.textContent=ft(bal); bel.className='bal-value'+(bal<0?' neg':'');
+  document.getElementById('m-earned').textContent=ft(earned);
+  document.getElementById('m-spent').textContent=ft(spent);
+
+  const pel=document.getElementById('pend');
+  pel.textContent=(pnet>=0?'+':'−')+ft(pnet);
+  pel.className='bal-value pending'+(pnet<0?' neg-p':'');
+  document.getElementById('pend-block').style.opacity=spec.length?'1':'0.4';
+
+  const sorted=getSorted(), list=document.getElementById('ledger-list'), empty=document.getElementById('ledger-empty');
+  if (!sorted.length) { empty.style.display='block'; list.innerHTML=''; document.getElementById('lcount').textContent=''; return; }
+  empty.style.display='none';
+  document.getElementById('lcount').textContent=`${sorted.length} entr${sorted.length===1?'y':'ies'}`;
+
+  list.innerHTML = sorted.map(e => {
+    const sp=e.speculative, cls=sp?(e.type==='earned'?'spec-earned':'spec-spent'):e.type;
+    const icon=e.type==='earned'?'▲':'▼', sign=e.type==='earned'?'+':'−';
+    const badges=[];
+    if (sp&&e.type==='earned') badges.push(`<span class="badge b-spec-e">Speculative</span>`);
+    if (sp&&e.type==='spent')  badges.push(`<span class="badge b-spec-s">Speculative</span>`);
+    if (e.editedAt) badges.push(`<span class="badge b-edited">Edited</span>`);
+    const acts = sp
+      ? `<button class="e-btn cb" onclick="confirmEntry('${e.id}')">✓ Confirm</button><button class="e-btn" onclick="openEdit('${e.id}')">Edit</button><button class="e-btn db" onclick="requestDelete('${e.id}')">Delete</button>`
+      : `<button class="e-btn" onclick="openEdit('${e.id}')">Edit</button><button class="e-btn db" onclick="requestDelete('${e.id}')">Delete</button>`;
+    return `<div class="entry ${cls}">
+      <div class="e-icon">${icon}</div>
+      <div><div class="e-name">${esc(e.name)}</div>${e.desc?`<div class="e-desc">${esc(e.desc)}</div>`:''}<div class="e-meta"><div class="e-date">${fd(e.date)}</div>${badges.join('')}</div></div>
+      <div class="e-amount">${sign}${ft(e.minutes)}</div>
+      <div class="e-actions">${acts}</div>
+    </div>`;
+  }).join('');
+}
+
+// EXPORT
+function exportCSV() {
+  const name=localStorage.getItem(NKEY)||'Unknown';
+  const rows=[['User','ID','Type','Speculative','Name','Description','Date','Hours','Minutes','Total Minutes','Created At','Edited At','Deleted At','Record Status','Audit Type']];
+  const addRow=(e,status,atype)=>{ rows.push([name,e.id,e.type,e.speculative?'Yes':'No',e.name,e.desc||'',e.date,Math.floor(e.minutes/60),e.minutes%60,e.minutes,e.createdAt||'',e.editedAt||'',e.deletedAt||'',status,atype]); };
+  entries.forEach(e=>addRow(e,e.deleted?'Deleted':'Active','Current'));
+  audit.forEach(e=>addRow(e,e._atype==='deleted'?'Deleted (archived)':e._atype==='pre-edit'?'Superseded by edit':'Pre-confirmation',e._atype||'archive'));
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`lieu-time-${name.replace(/\s+/g,'-').toLowerCase()}-${today()}.csv`; a.click();
+}
+
+init();
+</script>
+</body>
+</html>
